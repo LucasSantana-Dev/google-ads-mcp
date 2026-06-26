@@ -1,0 +1,24 @@
+# Secrets
+.env
+.env.local
+*google-ads.yaml
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+
+# Audit logs (runtime, not source)
+audit-log.jsonl
+audit.db*
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
