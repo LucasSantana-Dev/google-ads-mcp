@@ -251,3 +251,33 @@ def guarded_value_change(
                "change_fraction": round(change_fraction, 4)},
         executor=executor,
     )
+
+
+def guarded_create(
+    *,
+    customer_id: str,
+    describe: str,
+    entities: list,
+    confirm: bool,
+    executor: Callable[..., dict],
+) -> dict:
+    """Run an entity-creation behind allowlist + preview + audit gates."""
+    norm = normalize_customer_id(customer_id)
+    if not is_allowed(norm):
+        return _blocked(norm)
+
+    if not confirm:
+        preview = executor(validate_only=True)
+        return {
+            "success": True,
+            "applied": False,
+            "preview": True,
+            "would": describe,
+            "entities": entities,
+            "message": "Preview only (validate_only=true). Re-call with confirm=true to apply.",
+            "preview_result": preview,
+        }
+
+    return _apply_and_audit(
+        norm=norm, describe=describe, extra={"entities": entities}, executor=executor
+    )

@@ -43,7 +43,7 @@ def main() -> None:
         }
     }
     flow = InstalledAppFlow.from_client_config(client_config, scopes=SCOPES)
-    creds = flow.run_local_server(port=8080, prompt="consent")
+    creds = flow.run_local_server(port=0, prompt="consent")
 
     print("\n" + "=" * 60)
     print("Add this to your .env file:")
