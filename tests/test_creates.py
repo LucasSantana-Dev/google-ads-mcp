@@ -212,6 +212,76 @@ def test_create_ad_no_urls(monkeypatch):
         assert "final_urls" in str(e).lower()
 
 
+def test_create_ad_group_blocked_when_not_allowlisted(monkeypatch):
+    fake = FakeGoogleAdsClient()
+    _wire(monkeypatch, fake, allow=None)
+    out = c.create_ad_group(ALLOW, "123", "Test AG", confirm=True)
+    assert out["blocked"] is True
+    assert fake.mutations == []
+
+
+def test_create_ad_blocked_when_not_allowlisted(monkeypatch):
+    fake = FakeGoogleAdsClient()
+    _wire(monkeypatch, fake, allow=None)
+    out = c.create_ad(
+        ALLOW, "789",
+        ["Headline 1", "Headline 2", "Headline 3"],
+        ["Description 1", "Description 2"],
+        ["https://example.com"],
+        confirm=True,
+    )
+    assert out["blocked"] is True
+    assert fake.mutations == []
+
+
+def test_create_ad_headline_too_long(monkeypatch):
+    fake = FakeGoogleAdsClient()
+    _wire(monkeypatch, fake)
+    try:
+        c.create_ad(
+            ALLOW, "789",
+            ["Headline 1", "Headline 2", "H" * 31],  # 31 chars — over limit
+            ["Description 1", "Description 2"],
+            ["https://example.com"],
+            confirm=False,
+        )
+        assert False, "should raise ValueError"
+    except ValueError as e:
+        assert "headline" in str(e).lower()
+
+
+def test_create_ad_description_too_long(monkeypatch):
+    fake = FakeGoogleAdsClient()
+    _wire(monkeypatch, fake)
+    try:
+        c.create_ad(
+            ALLOW, "789",
+            ["Headline 1", "Headline 2", "Headline 3"],
+            ["Description 1", "D" * 91],  # 91 chars — over limit
+            ["https://example.com"],
+            confirm=False,
+        )
+        assert False, "should raise ValueError"
+    except ValueError as e:
+        assert "description" in str(e).lower()
+
+
+def test_create_ad_invalid_url(monkeypatch):
+    fake = FakeGoogleAdsClient()
+    _wire(monkeypatch, fake)
+    try:
+        c.create_ad(
+            ALLOW, "789",
+            ["Headline 1", "Headline 2", "Headline 3"],
+            ["Description 1", "Description 2"],
+            [""],  # empty URL
+            confirm=False,
+        )
+        assert False, "should raise ValueError"
+    except ValueError as e:
+        assert "final_url" in str(e).lower()
+
+
 def test_all_create_tools_registered():
     import google_ads_mcp.server as server
 

@@ -8,8 +8,21 @@ go through the allowlist/preview/confirm/audit gate.
 
 from __future__ import annotations
 
+import re
+import sys
+
 from .. import config, gaql, mutate
 from ..errors import tool_handler
+
+_REC_RESOURCE_RE = re.compile(r"^customers/\d+/recommendations/\d+$")
+
+
+def _require_recommendation_resource(value: str) -> None:
+    if not _REC_RESOURCE_RE.match(value):
+        raise ValueError(
+            f"recommendation_resource_name must match 'customers/CID/recommendations/ID',"
+            f" got {value!r}"
+        )
 
 
 # --- read-only tools (no gates) -----------------------------------------------
@@ -71,6 +84,11 @@ def generate_keyword_ideas(
     cid = gaql.normalize_customer_id(customer_id)
     service = client.get_service("KeywordPlanIdeaService")
     request = client.get_type("GenerateKeywordIdeasRequest")
+
+    gaql.require_id("language_id", language_id)
+    if location_ids:
+        for loc in location_ids:
+            gaql.require_id("location_id", str(loc))
 
     request.customer_id = cid
     request.language = f"languageConstants/{language_id}"
@@ -157,6 +175,7 @@ def apply_recommendation(
     gaql.require_customer_id(customer_id)
     if not recommendation_resource_name:
         raise ValueError("recommendation_resource_name required")
+    _require_recommendation_resource(recommendation_resource_name)
 
     cid = gaql.normalize_customer_id(customer_id)
     client = config.get_client()
@@ -202,6 +221,7 @@ def dismiss_recommendation(
     gaql.require_customer_id(customer_id)
     if not recommendation_resource_name:
         raise ValueError("recommendation_resource_name required")
+    _require_recommendation_resource(recommendation_resource_name)
 
     norm = gaql.normalize_customer_id(customer_id)
     if not mutate.is_allowed(norm):
@@ -234,12 +254,17 @@ def dismiss_recommendation(
     request.operations.append(op)
 
     result = service.dismiss_recommendations(request=request)
+    dismissed = getattr(result, "results", None)
+    if not dismissed:
+        raise ValueError(
+            "dismiss_recommendations returned no results — recommendation may not have been dismissed"
+        )
     response = {
         "success": True,
         "applied": True,
         "audit_logged": True,
         "result": {
-            "resource_names": [r.resource_name for r in result.results] if hasattr(result, "results") else [],
+            "resource_names": [r.resource_name for r in dismissed],
         },
     }
 
@@ -253,7 +278,6 @@ def dismiss_recommendation(
     except Exception as exc:
         response["audit_logged"] = False
         response["warning"] = f"Dismiss was APPLIED but audit log write failed: {exc}"
-        import sys
         print(
             f"CRITICAL: dismiss applied for customer {norm} "
             f"but audit log write failed: {exc}",

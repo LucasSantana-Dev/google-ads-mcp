@@ -13,6 +13,8 @@ from __future__ import annotations
 import re
 from typing import Any, Iterable
 
+from .retry import call_with_retry
+
 # Google Ads caps a single query result at 10,000 rows.
 MAX_ROWS = 10_000
 
@@ -90,17 +92,26 @@ def run_search(client: Any, customer_id: str, query: str, limit: int = 1000) -> 
 
     Returns ``{success, rows, row_count, is_truncated}``. ``is_truncated`` is True when the
     cap was hit (more rows may exist; narrow the query or raise the limit).
+
+    Retries automatically on RESOURCE_TEMPORARILY_EXHAUSTED with exponential backoff + jitter
+    (see :mod:`retry`). Partial result sets are discarded on retry so rows are never duplicated.
     """
     cap = max(1, min(limit, MAX_ROWS))
+    cid = normalize_customer_id(customer_id)
     service = client.get_service("GoogleAdsService")
-    rows: list[dict] = []
-    for batch in service.search_stream(customer_id=normalize_customer_id(customer_id), query=query):
-        for row in batch.results:
-            rows.append(row_to_dict(row))
+
+    def _execute() -> list[dict]:
+        rows: list[dict] = []
+        for batch in service.search_stream(customer_id=cid, query=query):
+            for row in batch.results:
+                rows.append(row_to_dict(row))
+                if len(rows) >= cap:
+                    break
             if len(rows) >= cap:
                 break
-        if len(rows) >= cap:
-            break
+        return rows
+
+    rows = call_with_retry(_execute)
     return {
         "success": True,
         "rows": rows,

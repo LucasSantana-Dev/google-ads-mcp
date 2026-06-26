@@ -24,6 +24,7 @@ import sys
 from typing import Callable
 
 from .gaql import normalize_customer_id
+from .retry import call_with_retry
 
 # Cap an oversized result payload in an audit record to avoid unbounded log growth.
 MAX_AUDIT_RESULT_BYTES = 16_000
@@ -120,8 +121,12 @@ def _blocked(norm: str) -> dict:
 
 
 def _apply_and_audit(*, norm, describe, extra: dict, executor) -> dict:
-    """Run the confirmed executor, then audit; surface applied-but-unaudited honestly."""
-    result = executor(validate_only=False)
+    """Run the confirmed executor, then audit; surface applied-but-unaudited honestly.
+
+    The executor is called via :func:`call_with_retry` so transient quota errors are
+    retried before the change is recorded in the audit log.
+    """
+    result = call_with_retry(executor, validate_only=False)
     response = {"success": True, "applied": True, "audit_logged": True, "result": result, **extra}
     try:
         audit({"customer_id": norm, "action": describe, "result": result, **extra})

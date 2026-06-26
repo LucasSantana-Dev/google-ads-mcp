@@ -65,9 +65,12 @@ def create_campaign(
         response = service.mutate(
             customer_id=cid, mutate_operations=[budget_op, campaign_op], validate_only=validate_only
         )
+        ops = response.mutate_operation_responses
+        if len(ops) < 2:
+            raise ValueError(f"expected 2 operation responses from mutate, got {len(ops)}")
         return {
-            "budget_resource_name": response.mutate_operation_responses[0].campaign_budget_result.resource_name,
-            "campaign_resource_name": response.mutate_operation_responses[1].campaign_result.resource_name,
+            "budget_resource_name": ops[0].campaign_budget_result.resource_name,
+            "campaign_resource_name": ops[1].campaign_result.resource_name,
             "validate_only": validate_only,
         }
 
@@ -233,6 +236,9 @@ def create_ad(
 
     if not final_urls or len(final_urls) < 1:
         raise ValueError("final_urls must have at least 1 URL")
+    for i, url in enumerate(final_urls):
+        if not url or not isinstance(url, str) or not str(url).strip():
+            raise ValueError(f"final_url[{i}] must be a non-empty string, got {url!r}")
 
     cid = gaql.normalize_customer_id(customer_id)
     client = config.get_client()

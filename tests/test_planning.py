@@ -154,6 +154,35 @@ def test_dismiss_recommendation_blocked(monkeypatch):
     assert out["blocked"] is True
 
 
+def test_generate_keyword_ideas_zero_results(monkeypatch):
+    fake = FakeGoogleAdsClient(ideas=[])
+    _wire(monkeypatch, fake)
+    out = p.generate_keyword_ideas(ALLOW, keywords=["obscure-term-xyz"])
+    assert out["success"] is True
+    assert out["idea_count"] == 0
+    assert out["ideas"] == []
+
+
+def test_apply_recommendation_invalid_resource_name(monkeypatch):
+    fake = FakeGoogleAdsClient()
+    _wire(monkeypatch, fake)
+    try:
+        p.apply_recommendation(ALLOW, "bad-resource-name", confirm=False)
+        assert False, "should raise ValueError"
+    except ValueError as e:
+        assert "recommendation_resource_name" in str(e).lower()
+
+
+def test_dismiss_recommendation_invalid_resource_name(monkeypatch):
+    fake = FakeGoogleAdsClient()
+    _wire(monkeypatch, fake)
+    try:
+        p.dismiss_recommendation(ALLOW, "not/a/valid/resource", confirm=False)
+        assert False, "should raise ValueError"
+    except ValueError as e:
+        assert "recommendation_resource_name" in str(e).lower()
+
+
 def test_all_planning_tools_registered():
     import asyncio
     import google_ads_mcp.server as server
