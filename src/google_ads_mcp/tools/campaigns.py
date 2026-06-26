@@ -16,6 +16,10 @@ def get_campaigns(customer_id: str, status_filter: str | None = None, limit: int
 
     Returns ``{success, rows, row_count, is_truncated}``.
     """
+    gaql.require_customer_id(customer_id)
+    if status_filter is not None:
+        gaql.require_enum("status_filter", status_filter, gaql.CAMPAIGN_STATUSES)
+    limit = int(limit)
     client = config.get_client()
     query = gaql.TEMPLATES["campaigns"]
     if status_filter:
@@ -37,9 +41,16 @@ def get_campaign_performance(
 
     Returns ``{success, rows, row_count, is_truncated}``.
     """
+    gaql.require_customer_id(customer_id)
+    gaql.require_date("date_start", date_start)
+    gaql.require_date("date_end", date_end)
+    limit = int(limit)
     client = config.get_client()
     query = gaql.TEMPLATES["campaign_performance"]
-    query += f" WHERE segments.date BETWEEN '{date_start}' AND '{date_end}' ORDER BY metrics.cost_micros DESC"
+    query += (
+        f" WHERE segments.date BETWEEN '{date_start}' AND '{date_end}'"
+        " ORDER BY metrics.cost_micros DESC"
+    )
     query += f" LIMIT {limit}"
     return gaql.run_search(client, customer_id, query, limit)
 

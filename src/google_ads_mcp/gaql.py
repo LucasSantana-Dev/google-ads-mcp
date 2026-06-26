@@ -3,10 +3,14 @@
 The core entry point is :func:`run_search`, which executes a GAQL query via
 ``GoogleAdsService.search_stream`` and returns paginated, capped, serialized rows.
 Reporting tools build a GAQL string (often with :data:`TEMPLATES`) and call ``run_search``.
+
+The ``require_*`` validators are defense-in-depth: tools that interpolate ids / dates / enum
+values into a GAQL string must validate them first so a caller cannot inject query logic.
 """
 
 from __future__ import annotations
 
+import re
 from typing import Any, Iterable
 
 # Google Ads caps a single query result at 10,000 rows.
@@ -17,6 +21,48 @@ def normalize_customer_id(customer_id: str) -> str:
     """Customer ids are digits only; strip hyphens a user may have pasted."""
     return customer_id.replace("-", "").strip()
 
+
+# --- input validation -----------------------------------------------------
+_ID_RE = re.compile(r"^\d+$")
+_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+CAMPAIGN_STATUSES = {"ENABLED", "PAUSED", "REMOVED"}
+AD_GROUP_STATUSES = {"ENABLED", "PAUSED", "REMOVED"}
+KEYWORD_MATCH_TYPES = {"BROAD", "PHRASE", "EXACT"}
+
+
+def require_customer_id(value: str) -> str:
+    """Normalize then validate that a customer id is digits only. Raises ValueError otherwise."""
+    norm = normalize_customer_id(value)
+    if not _ID_RE.match(norm):
+        raise ValueError(f"customer_id must be digits (hyphens allowed), got {value!r}")
+    return norm
+
+
+def require_id(name: str, value: str) -> str:
+    """Validate a numeric resource id (digits only). Raises ValueError otherwise."""
+    text = str(value).strip()
+    if not _ID_RE.match(text):
+        raise ValueError(f"{name} must be digits only, got {value!r}")
+    return text
+
+
+def require_date(name: str, value: str) -> str:
+    """Validate a YYYY-MM-DD date string. Raises ValueError otherwise."""
+    text = str(value).strip()
+    if not _DATE_RE.match(text):
+        raise ValueError(f"{name} must be in YYYY-MM-DD format, got {value!r}")
+    return text
+
+
+def require_enum(name: str, value: str, allowed: set[str]) -> str:
+    """Validate that value is in the allowed set. Raises ValueError otherwise."""
+    if value not in allowed:
+        raise ValueError(f"{name} must be one of {sorted(allowed)}, got {value!r}")
+    return value
+
+
+# --- query execution ------------------------------------------------------
 
 def row_to_dict(row: Any) -> dict:
     """Serialize a GoogleAdsRow (proto-plus) to a plain dict.

@@ -20,24 +20,26 @@ def get_keywords(
         match_type_filter: Optional match type filter (BROAD, PHRASE, or EXACT).
         limit: max rows returned to the caller (hard-capped at 10,000 by the API).
 
-    Returns:
-        ``{success, rows, row_count, is_truncated}``.
+    Returns ``{success, rows, row_count, is_truncated}``.
     """
+    gaql.require_customer_id(customer_id)
+    if ad_group_id is not None:
+        gaql.require_id("ad_group_id", ad_group_id)
+    if match_type_filter is not None:
+        gaql.require_enum("match_type_filter", match_type_filter, gaql.KEYWORD_MATCH_TYPES)
+    limit = int(limit)
     client = config.get_client()
     query = gaql.TEMPLATES["keywords"]
-    
-    # Build WHERE conditions
+
     conditions = []
     if ad_group_id is not None:
         conditions.append(f"ad_group.id = {ad_group_id}")
     if match_type_filter is not None:
         conditions.append(f"ad_group_criterion.keyword.match_type = '{match_type_filter}'")
-    
-    # Append WHERE clause if conditions exist
     if conditions:
         query += " WHERE " + " AND ".join(conditions)
-    
     query += f" LIMIT {limit}"
+
     return gaql.run_search(client, customer_id, query, limit)
 
 
@@ -61,24 +63,27 @@ def get_search_terms(
         min_impressions: Optional minimum impressions threshold (default 0 = no filter).
         limit: max rows returned to the caller (hard-capped at 10,000 by the API).
 
-    Returns:
-        ``{success, rows, row_count, is_truncated}``.
+    Returns ``{success, rows, row_count, is_truncated}``.
     """
+    gaql.require_customer_id(customer_id)
+    gaql.require_date("date_start", date_start)
+    gaql.require_date("date_end", date_end)
+    if campaign_id is not None:
+        gaql.require_id("campaign_id", campaign_id)
+    min_impressions = int(min_impressions)
+    limit = int(limit)
     client = config.get_client()
     query = gaql.TEMPLATES["search_terms"]
-    
-    # Build WHERE conditions
+
     conditions = [f"segments.date BETWEEN '{date_start}' AND '{date_end}'"]
     if campaign_id is not None:
         conditions.append(f"campaign.id = {campaign_id}")
     if min_impressions > 0:
         conditions.append(f"metrics.impressions >= {min_impressions}")
-    
-    # Append WHERE, ORDER BY, and LIMIT
     query += " WHERE " + " AND ".join(conditions)
     query += " ORDER BY metrics.clicks DESC"
     query += f" LIMIT {limit}"
-    
+
     return gaql.run_search(client, customer_id, query, limit)
 
 

@@ -19,3 +19,10 @@ All notable changes to this project are documented here. Format loosely follows
 - `scripts/get_refresh_token.py` — one-time OAuth refresh-token helper.
 - 38 no-network unit tests (mocked GoogleAdsClient); README setup + tool reference.
 - Roadmap plan at `.claude/plans/google-ads-mcp.md` (staged read-only → writes → planning).
+- **8 gated write tools (Phase 2 / v1.5):** `pause`/`enable` × `campaign`/`ad_group`/`keyword`/`ad`.
+  Write-safety harness (`mutate.py`): default-deny allowlist (`GOOGLE_ADS_MUTATE_ALLOWLIST`) →
+  `validate_only` preview → explicit `confirm` → append-only audit log (flock, 0600, size-capped).
+  Applied-but-unaudited mutations are surfaced honestly (`audit_logged:false` + stderr CRITICAL),
+  never mislabeled as failures. Status mutations use the official `field_mask` pattern.
+- Hardened GAQL input validation across read + write tools (numeric ids, `YYYY-MM-DD` dates,
+  enum allowlists) — defense-in-depth against query injection. Adversarial 3-lens review applied.

@@ -25,9 +25,12 @@ def get_change_events(
         date_end: end date in 'YYYY-MM-DD' format (inclusive).
         limit: max rows returned to the caller (hard-capped at 10,000 by the API).
 
-    Returns:
-        ``{success, rows, row_count, is_truncated}``.
+    Returns ``{success, rows, row_count, is_truncated}``.
     """
+    gaql.require_customer_id(customer_id)
+    gaql.require_date("date_start", date_start)
+    gaql.require_date("date_end", date_end)
+    limit = int(limit)
     client = config.get_client()
     query = gaql.TEMPLATES["change_events"]
     query += f" WHERE change_event.change_date_time BETWEEN '{date_start}' AND '{date_end}'"

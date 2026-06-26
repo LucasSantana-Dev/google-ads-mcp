@@ -17,26 +17,27 @@ def get_ad_groups(
     Args:
         customer_id: Google Ads customer id (digits only; hyphens are stripped).
         campaign_id: optional campaign id to filter ad groups.
-        status_filter: optional ad group status filter (e.g. 'ENABLED', 'PAUSED').
+        status_filter: optional ad group status filter (ENABLED, PAUSED, or REMOVED).
         limit: max rows returned to the caller (hard-capped at 10,000 by the API).
 
     Returns ``{success, rows, row_count, is_truncated}``.
     """
+    gaql.require_customer_id(customer_id)
+    if campaign_id is not None:
+        gaql.require_id("campaign_id", campaign_id)
+    if status_filter is not None:
+        gaql.require_enum("status_filter", status_filter, gaql.AD_GROUP_STATUSES)
+    limit = int(limit)
     client = config.get_client()
     query = gaql.TEMPLATES["ad_groups"]
 
-    # Build WHERE clause conditions
     conditions = []
     if campaign_id is not None:
         conditions.append(f"campaign.id = {campaign_id}")
     if status_filter is not None:
         conditions.append(f"ad_group.status = '{status_filter}'")
-
-    # Append WHERE clause if there are conditions
     if conditions:
         query += " WHERE " + " AND ".join(conditions)
-
-    # Append LIMIT
     query += f" LIMIT {limit}"
 
     return gaql.run_search(client, customer_id, query, limit)
