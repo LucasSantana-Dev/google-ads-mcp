@@ -12,6 +12,12 @@ class _NestedNamespace:
     """Recursive auto-creating namespace for proto-plus-like types in tests."""
 
     def __getattr__(self, name: str):
+        # Check if this attribute already exists
+        try:
+            return object.__getattribute__(self, name)
+        except AttributeError:
+            pass
+        # Create a child or list wrapper
         child = _NestedNamespace()
         object.__setattr__(self, name, child)
         return child
@@ -31,6 +37,12 @@ class _NestedNamespace:
     def append(self, item: Any) -> None:
         lst = object.__getattribute__(self, "_list") if "_list" in self.__dict__ else []
         lst.append(item)
+        object.__setattr__(self, "_list", lst)
+
+    def extend(self, items: Any) -> None:
+        lst = object.__getattribute__(self, "_list") if "_list" in self.__dict__ else []
+        if hasattr(items, "__iter__"):
+            lst.extend(items)
         object.__setattr__(self, "_list", lst)
 
     def __iter__(self):
@@ -168,6 +180,44 @@ class _MutateService:
         raise AttributeError(name)
 
 
+class _KeywordPlanIdeaService:
+    """Fake KeywordPlanIdeaService for testing keyword idea generation."""
+
+    def __init__(self, ideas: list) -> None:
+        self._ideas = list(ideas) if ideas else []
+
+    def generate_keyword_ideas(self, request=None):
+        return self._ideas
+
+
+class _RecommendationService:
+    """Fake RecommendationService for testing recommendations."""
+
+    def __init__(self, recorder: list) -> None:
+        self._recorder = recorder
+
+    def apply_recommendations(self, customer_id=None, operations=None, validate_only=False):
+        ops = list(operations or [])
+        self._recorder.append({
+            "method": "apply_recommendations",
+            "customer_id": customer_id,
+            "validate_only": validate_only,
+            "op_count": len(ops),
+        })
+        results = [
+            SimpleNamespace(resource_name=f"customers/{customer_id}/recommendations/{i}")
+            for i, _ in enumerate(ops)
+        ]
+        return SimpleNamespace(results=results)
+
+    def dismiss_recommendations(self, request=None, validate_only=False):
+        self._recorder.append({
+            "method": "dismiss_recommendations",
+            "validate_only": validate_only,
+        })
+        return SimpleNamespace(results=[SimpleNamespace(resource_name="dismissed")])
+
+
 class FakeGoogleAdsClient:
     """Configurable stand-in for ``google.ads.googleads.client.GoogleAdsClient``.
 
@@ -188,11 +238,13 @@ class FakeGoogleAdsClient:
         customers: list | None = None,
         fields: list | None = None,
         batch_size: int | None = None,
+        ideas: list | None = None,
     ) -> None:
         self._rows = rows or []
         self._customers = customers or []
         self._fields = fields or []
         self._batch_size = batch_size
+        self._ideas = ideas or []
         self.mutations: list[dict] = []
         self.enums = _Enums()
 
@@ -203,10 +255,16 @@ class FakeGoogleAdsClient:
             return _CustomerService(self._customers)
         if name == "GoogleAdsFieldService":
             return _FieldService(self._fields)
+        if name == "KeywordPlanIdeaService":
+            return _KeywordPlanIdeaService(self._ideas)
+        if name == "RecommendationService":
+            return _RecommendationService(self.mutations)
         # Any other service (CampaignService, AdGroupService, ...) is a mutate-capable entity service.
         return _MutateService(self.mutations)
 
     def get_type(self, type_name: str):
-        if type_name in ("MutateOperation", "AdTextAsset"):
+        if type_name in ("MutateOperation", "AdTextAsset", "GenerateKeywordIdeasRequest",
+                         "DismissRecommendationRequest", "DismissRecommendationOperation",
+                         "ApplyRecommendationOperation"):
             return _NestedNamespace()
         return _Operation()
