@@ -33,22 +33,6 @@ ENTITIES = {
 }
 
 
-def _set_status_update_mask(client, operation, entity) -> None:
-    """Populate the operation's update_mask for the 'status' field.
-
-    Uses the official ``protobuf_helpers.field_mask`` pattern (as in every Google Ads sample)
-    against the real proto-plus message, and falls back to a direct paths assignment for test
-    doubles (which have no ``_pb``). The live path is what the API actually receives.
-    """
-    pb = getattr(entity, "_pb", None)
-    if pb is not None and hasattr(client, "copy_from"):
-        from google.api_core import protobuf_helpers
-
-        client.copy_from(operation.update_mask, protobuf_helpers.field_mask(None, pb))
-    else:
-        operation.update_mask.paths.append("status")
-
-
 def _apply_status(client, entity_key, customer_id, path_ids, target_status, validate_only):
     """Build and send a single status-update operation. The actual Google Ads API call."""
     cfg = ENTITIES[entity_key]
@@ -58,7 +42,7 @@ def _apply_status(client, entity_key, customer_id, path_ids, target_status, vali
     entity = operation.update
     entity.resource_name = getattr(service, cfg["path"])(cid, *path_ids)
     entity.status = getattr(getattr(client.enums, cfg["enum"]), target_status)
-    _set_status_update_mask(client, operation, entity)
+    mutate.set_update_mask(client, operation, entity, "status")
     response = getattr(service, cfg["mutate"])(
         customer_id=cid, operations=[operation], validate_only=validate_only
     )

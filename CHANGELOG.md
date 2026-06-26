@@ -26,3 +26,8 @@ All notable changes to this project are documented here. Format loosely follows
   never mislabeled as failures. Status mutations use the official `field_mask` pattern.
 - Hardened GAQL input validation across read + write tools (numeric ids, `YYYY-MM-DD` dates,
   enum allowlists) — defense-in-depth against query injection. Adversarial 3-lens review applied.
+- **3 gated bid/budget write tools (Phase 3 / v2.0):** `update_keyword_bid`, `update_ad_group_bid`,
+  `update_campaign_budget`. Same allowlist/preview/confirm/audit harness plus a **percent-change
+  cap** (reads the current value, blocks a change beyond the cap; default bid 25% / budget 20%,
+  via `GOOGLE_ADS_MAX_BID_CHANGE_PCT` / `GOOGLE_ADS_MAX_BUDGET_CHANGE_PCT`). Audit records old→new.
+  `row_to_dict` now emits deterministic snake_case keys. Reviewed clean (API-correctness + cap-safety).

@@ -65,19 +65,24 @@ def require_enum(name: str, value: str, allowed: set[str]) -> str:
 # --- query execution ------------------------------------------------------
 
 def row_to_dict(row: Any) -> dict:
-    """Serialize a GoogleAdsRow (proto-plus) to a plain dict.
+    """Serialize a GoogleAdsRow (proto-plus) to a plain dict with snake_case keys.
 
-    Passes through dicts unchanged so test doubles can yield plain dicts as rows.
+    Passes through dicts unchanged so test doubles can yield plain dicts as rows. Keys are
+    snake_case (``preserving_proto_field_name=True``) so they match the GAQL field names the
+    caller wrote (e.g. ``cpc_bid_micros``) rather than protobuf camelCase.
     """
     if isinstance(row, dict):
         return row
     to_dict = getattr(type(row), "to_dict", None)
     if callable(to_dict):
-        return to_dict(row)
+        try:
+            return to_dict(row, preserving_proto_field_name=True)
+        except TypeError:
+            return to_dict(row)
     pb = getattr(row, "_pb", row)
     from google.protobuf.json_format import MessageToDict
 
-    return MessageToDict(pb)
+    return MessageToDict(pb, preserving_proto_field_name=True)
 
 
 def run_search(client: Any, customer_id: str, query: str, limit: int = 1000) -> dict:
