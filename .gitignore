@@ -22,3 +22,6 @@ audit.db*
 .DS_Store
 .idea/
 .vscode/
+
+# Google Ads UI screenshots routinely contain account IDs/spend — never track
+screenshots/
