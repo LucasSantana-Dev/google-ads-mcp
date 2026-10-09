@@ -71,6 +71,26 @@ def set_update_mask(client, operation, entity, field_name: str) -> None:
         operation.update_mask.paths.append(field_name)
 
 
+def request_type_name(method: str) -> str:
+    """``mutate_ad_groups`` -> ``MutateAdGroupsRequest``."""
+    return "".join(part.capitalize() for part in method.split("_")) + "Request"
+
+
+def send_mutate(
+    client, service, method: str, cid: str, operations: list, validate_only: bool
+):
+    """Call a ``*Service.mutate_*`` method.
+
+    The real client only takes ``customer_id`` and ``operations`` as keywords, so
+    ``validate_only`` has to travel inside the request message.
+    """
+    request = client.get_type(request_type_name(method))
+    request.customer_id = cid
+    request.operations.extend(operations)
+    request.validate_only = validate_only
+    return getattr(service, method)(request=request)
+
+
 def audit_log_path() -> str:
     return os.environ.get("GOOGLE_ADS_AUDIT_LOG", "audit-log.jsonl")
 

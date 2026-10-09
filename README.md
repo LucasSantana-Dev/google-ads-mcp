@@ -12,7 +12,7 @@ A [Model Context Protocol](https://modelcontextprotocol.io) server that exposes 
 
 ## Features
 
-31 tools across five capability layers:
+34 tools across six capability layers:
 
 ### Read-only reporting
 | Tool | What it does |
@@ -60,6 +60,13 @@ A [Model Context Protocol](https://modelcontextprotocol.io) server that exposes 
 | `create_ad_group` | Create ad group under a campaign |
 | `create_keyword` | Add keyword to an ad group |
 | `create_ad` | Create a responsive search ad (starts paused) |
+
+### Negative keywords
+| Tool | What it does |
+|------|-------------|
+| `list_negative_keywords` | List campaign-level negatives, or an ad group's when `ad_group_id` is set |
+| `add_campaign_negative_keywords` | Add up to 50 negatives to a campaign (gated, default PHRASE) |
+| `add_ad_group_negative_keywords` | Add up to 50 negatives to an ad group (gated, default PHRASE) |
 
 ---
 
@@ -146,7 +153,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 }
 ```
 
-Restart Claude Desktop. The 31 tools appear automatically.
+Restart Claude Desktop. The 34 tools appear automatically.
 
 ---
 
@@ -202,6 +209,7 @@ src/google_ads_mcp/
     ├── writes_status.py   # pause/enable campaign/ad_group/keyword/ad (8 tools)
     ├── writes_value.py    # update keyword bid, ad group bid, campaign budget (3 tools)
     ├── creates.py         # create campaign, ad group, keyword, ad (4 tools)
+    ├── negatives.py       # list + add campaign/ad-group negative keywords (3 tools)
     └── planning.py        # recommendations, keyword ideas, forecast (5 tools)
 ```
 

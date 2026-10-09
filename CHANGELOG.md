@@ -6,6 +6,8 @@ All notable changes to this project are documented here. Format loosely follows
 ## [Unreleased]
 
 ### Added
+- Negative keyword tools: `list_negative_keywords`, `add_campaign_negative_keywords`,
+  `add_ad_group_negative_keywords` (gated like the other creates; tested against real protos).
 - Phase 0 scaffold: Python `src/` package, `pyproject.toml`, FastMCP stdio server.
 - `config.get_client()` — env-based GoogleAdsClient factory pinned to API `v24` with a
   clear missing-credential error.
