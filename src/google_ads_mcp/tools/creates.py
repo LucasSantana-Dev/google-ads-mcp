@@ -173,17 +173,16 @@ def create_keyword(
     def executor(validate_only):
         service = client.get_service("AdGroupCriterionService")
         operation = client.get_type("AdGroupCriterionOperation")
-        op = operation.ad_group_criterion_operation.create
+        op = operation.create
         op.ad_group = f"customers/{cid}/adGroups/{ad_group_id}"
         op.status = client.enums.AdGroupCriterionStatusEnum.ENABLED
         op.keyword.text = keyword_text
         op.keyword.match_type = getattr(client.enums.KeywordMatchTypeEnum, match)
         if cpc_bid_micros is not None:
             op.cpc_bid_micros = cpc_bid_micros
-        operation.resource_name = f"customers/{cid}/adGroupCriteria/{ad_group_id}~-1"
 
-        response = service.mutate_ad_group_criteria(
-            customer_id=cid, operations=[operation], validate_only=validate_only
+        response = mutate.send_mutate(
+            client, service, "mutate_ad_group_criteria", cid, [operation], validate_only
         )
         return {
             "resource_names": [r.resource_name for r in response.results],

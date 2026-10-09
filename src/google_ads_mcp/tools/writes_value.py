@@ -54,8 +54,8 @@ def _apply_value(client, cid, service_name, op_type, mutate_method, path_method,
     entity.resource_name = getattr(service, path_method)(cid, *path_ids)
     setattr(entity, field, value)
     mutate.set_update_mask(client, operation, entity, field)
-    response = getattr(service, mutate_method)(
-        customer_id=cid, operations=[operation], validate_only=validate_only
+    response = mutate.send_mutate(
+        client, service, mutate_method, cid, [operation], validate_only
     )
     return {
         "resource_names": [r.resource_name for r in response.results],
