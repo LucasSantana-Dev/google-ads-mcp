@@ -160,7 +160,14 @@ class _MutateService:
                 f"customers/{customer_id}/" + "/".join(str(i) for i in ids)
             )
         if name.startswith("mutate_"):
-            def _mutate(customer_id=None, operations=None, validate_only=False):
+
+            def _mutate(
+                customer_id=None, operations=None, validate_only=False, request=None
+            ):
+                if request is not None:
+                    customer_id = request.customer_id
+                    operations = request.operations
+                    validate_only = request.validate_only
                 ops = list(operations or [])
                 self._recorder.append(
                     {
@@ -178,6 +185,15 @@ class _MutateService:
 
             return _mutate
         raise AttributeError(name)
+
+
+class _Request:
+    """Stand-in for a Mutate*Request message."""
+
+    def __init__(self) -> None:
+        self.customer_id = None
+        self.operations = []
+        self.validate_only = False
 
 
 class _KeywordPlanIdeaService:
@@ -263,6 +279,8 @@ class FakeGoogleAdsClient:
         return _MutateService(self.mutations)
 
     def get_type(self, type_name: str):
+        if type_name.startswith("Mutate") and type_name.endswith("Request"):
+            return _Request()
         if type_name in ("MutateOperation", "AdTextAsset", "GenerateKeywordIdeasRequest",
                          "DismissRecommendationRequest", "DismissRecommendationOperation",
                          "ApplyRecommendationOperation"):

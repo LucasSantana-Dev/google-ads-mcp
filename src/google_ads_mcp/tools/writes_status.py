@@ -43,8 +43,8 @@ def _apply_status(client, entity_key, customer_id, path_ids, target_status, vali
     entity.resource_name = getattr(service, cfg["path"])(cid, *path_ids)
     entity.status = getattr(getattr(client.enums, cfg["enum"]), target_status)
     mutate.set_update_mask(client, operation, entity, "status")
-    response = getattr(service, cfg["mutate"])(
-        customer_id=cid, operations=[operation], validate_only=validate_only
+    response = mutate.send_mutate(
+        client, service, cfg["mutate"], cid, [operation], validate_only
     )
     return {
         "resource_names": [r.resource_name for r in response.results],
